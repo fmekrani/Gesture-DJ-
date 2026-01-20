@@ -40,6 +40,10 @@ export default function CameraHUD() {
   const holdTriggeredRef = useRef<Record<string, boolean>>({});
   const [calProgress, setCalProgress] = useState(0);
   const [mappedControls, setMappedControls] = useState<any | null>(null);
+  const [size, setSize] = useState<{ width: number; height: number }>({ width: 640, height: 400 });
+  const [pos, setPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const resizingRef = useRef(false);
+  const resizeStartRef = useRef<{ mx: number; my: number; w: number; h: number }>({ mx: 0, my: 0, w: 0, h: 0 });
 
   useEffect(() => {
     return () => {
@@ -233,9 +237,54 @@ export default function CameraHUD() {
     }, 100);
   }
 
+  useEffect(() => {
+    // center HUD on mount (client-only)
+    const w = size.width;
+    const h = size.height;
+    const left = Math.max(16, Math.floor((window.innerWidth - w) / 2));
+    const top = Math.max(220, Math.floor((window.innerHeight - h) / 2));
+    setPos({ x: left, y: top });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function onResizePointerDown(e: React.PointerEvent) {
+    resizingRef.current = true;
+    resizeStartRef.current = { mx: e.clientX, my: e.clientY, w: size.width, h: size.height };
+    (e.target as Element).setPointerCapture((e as any).pointerId);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  }
+
+  function onPointerMove(e: PointerEvent) {
+    if (!resizingRef.current) return;
+    const dx = e.clientX - resizeStartRef.current.mx;
+    const dy = e.clientY - resizeStartRef.current.my;
+    const newW = Math.max(240, Math.round(resizeStartRef.current.w + dx));
+    const newH = Math.max(140, Math.round(resizeStartRef.current.h + dy));
+    setSize({ width: newW, height: newH });
+  }
+
+  function onPointerUp(e?: PointerEvent) {
+    resizingRef.current = false;
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+  }
+
+  // update todo: position will be updated via drag end
+
   return (
-    <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.35 }} className="w-80 h-60 sm:w-96 sm:h-64 md:w-[480px] md:h-[320px] bg-black/30 rounded overflow-hidden border border-white/5 relative neon-shadow">
-      <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+    <motion.div
+      drag
+      onDragEnd={(_, info) => {
+        setPos((p) => ({ x: Math.max(8, Math.round(p.x + info.offset.x)), y: Math.max(8, Math.round(p.y + info.offset.y)) }));
+      }}
+      initial={{ scale: 0.98, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.25 }}
+      className="bg-black/30 rounded overflow-hidden border border-white/5 neon-shadow"
+      style={{ width: size.width, height: size.height, position: 'fixed', left: pos.x, top: pos.y, zIndex: 900 }}
+    >
+      <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
       <div className="p-2 absolute bottom-2 left-2 flex gap-2">
         {!running ? (
@@ -266,6 +315,13 @@ export default function CameraHUD() {
           <div>B: {mappedControls.B?.assigned ? `vol ${mappedControls.B.volume.toFixed(2)}` : '—'}</div>
         </div>
       )}
+      {/* Resize handle */}
+      <div
+        onPointerDown={onResizePointerDown}
+        className="absolute bottom-1 right-1 w-4 h-4 bg-white/20 rounded cursor-nwse-resize"
+        style={{ touchAction: 'none' }}
+        aria-hidden
+      />
     </motion.div>
   );
 }
