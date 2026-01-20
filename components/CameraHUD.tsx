@@ -234,7 +234,7 @@ export default function CameraHUD() {
   }
 
   return (
-    <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.35 }} className="w-48 h-40 bg-black/30 rounded overflow-hidden border border-white/5 relative neon-shadow">
+    <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.35 }} className="w-80 h-60 sm:w-96 sm:h-64 md:w-[480px] md:h-[320px] bg-black/30 rounded overflow-hidden border border-white/5 relative neon-shadow">
       <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
       <div className="p-2 absolute bottom-2 left-2 flex gap-2">
