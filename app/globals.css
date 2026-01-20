@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  height: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.glass {
+  background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  backdrop-filter: blur(10px) saturate(120%);
+}
+
+.neon-shadow {
+  box-shadow: 0 10px 40px rgba(168, 85, 247, 0.25);
+}
+
+:root{
+  --bg-1: #0f172a;
+  --bg-2: #071029;
+  --accent: #a855f7;
+  --accent-2: #ec4899;
+}
+
+body{
+  background: radial-gradient(1200px 600px at 10% 10%, rgba(168,85,247,0.06), transparent 8%), radial-gradient(900px 400px at 90% 90%, rgba(236,72,153,0.04), transparent 6%), linear-gradient(180deg,var(--bg-1),var(--bg-2));
+  color: #e6eef8;
+}
+
+.glass-strong{
+  background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: blur(14px) saturate(130%);
+}
+
+.neon-outline{
+  box-shadow: 0 2px 12px rgba(168,85,247,0.12), inset 0 0 30px rgba(168,85,247,0.02);
+  border: 1px solid rgba(168,85,247,0.12);
+}
