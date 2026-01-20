@@ -199,34 +199,46 @@ export default function CameraHUD() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const w = canvas.width = video.videoWidth || 320;
-    const h = canvas.height = video.videoHeight || 240;
+    // Get video dimensions and set canvas to match
+    const videoWidth = video.videoWidth || 640;
+    const videoHeight = video.videoHeight || 480;
+    
+    // Set canvas resolution to video resolution for accurate pixel mapping
+    canvas.width = videoWidth;
+    canvas.height = videoHeight;
 
-    ctx.clearRect(0, 0, w, h);
-    ctx.lineWidth = 2;
+    ctx.clearRect(0, 0, videoWidth, videoHeight);
+    ctx.lineWidth = 2.5;
 
     hands.forEach((landmarks, hi) => {
       // draw connections
-      ctx.strokeStyle = hi === 0 ? 'rgba(180,91,255,0.9)' : 'rgba(79,209,255,0.9)';
-      ctx.shadowColor = hi === 0 ? 'rgba(180,91,255,0.4)' : 'rgba(79,209,255,0.4)';
-      ctx.shadowBlur = 8;
+      ctx.strokeStyle = hi === 0 ? 'rgba(180,91,255,0.95)' : 'rgba(79,209,255,0.95)';
+      ctx.shadowColor = hi === 0 ? 'rgba(180,91,255,0.5)' : 'rgba(79,209,255,0.5)';
+      ctx.shadowBlur = 10;
       HAND_CONNECTIONS.forEach(([a, b]) => {
         const pA = landmarks[a];
         const pB = landmarks[b];
         if (!pA || !pB) return;
         ctx.beginPath();
-        ctx.moveTo(pA.x * w, pA.y * h);
-        ctx.lineTo(pB.x * w, pB.y * h);
+        ctx.moveTo(pA.x * videoWidth, pA.y * videoHeight);
+        ctx.lineTo(pB.x * videoWidth, pB.y * videoHeight);
         ctx.stroke();
       });
       ctx.shadowBlur = 0;
 
-      // draw landmarks
+      // draw landmarks with slightly larger dots
       landmarks.forEach((p, i) => {
         ctx.fillStyle = '#e9eef7';
         ctx.beginPath();
-        ctx.arc(p.x * w, p.y * h, 3, 0, Math.PI * 2);
+        ctx.arc(p.x * videoWidth, p.y * videoHeight, 4, 0, Math.PI * 2);
         ctx.fill();
+        
+        // add small ring around landmark for clarity
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(p.x * videoWidth, p.y * videoHeight, 6, 0, Math.PI * 2);
+        ctx.stroke();
       });
     });
   }
@@ -263,7 +275,7 @@ export default function CameraHUD() {
       className="relative w-full max-w-2xl h-[320px] sm:h-[360px] md:h-[380px] rounded-2xl overflow-hidden border border-white/8 glass-strong neon-shadow"
     >
       <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ display: 'block' }} />
 
       <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black/55 backdrop-blur-md px-3 py-2 rounded-lg flex items-center gap-2 text-xs text-white border border-white/10 shadow-lg">
         <span className="text-base">✋</span>
