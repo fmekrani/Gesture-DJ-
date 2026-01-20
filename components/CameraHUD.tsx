@@ -40,10 +40,7 @@ export default function CameraHUD() {
   const holdTriggeredRef = useRef<Record<string, boolean>>({});
   const [calProgress, setCalProgress] = useState(0);
   const [mappedControls, setMappedControls] = useState<any | null>(null);
-  const [size, setSize] = useState<{ width: number; height: number }>({ width: 640, height: 400 });
-  const [pos, setPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const resizingRef = useRef(false);
-  const resizeStartRef = useRef<{ mx: number; my: number; w: number; h: number }>({ mx: 0, my: 0, w: 0, h: 0 });
+  const [gestureStatus, setGestureStatus] = useState<string>('Ready');
 
   useEffect(() => {
     return () => {
@@ -103,6 +100,7 @@ export default function CameraHUD() {
               const info = audioEngine.getDeckInfo(deck);
               if (info.isPlaying) audioEngine.pauseDeck(deck);
               else audioEngine.playDeck(deck);
+              setGestureStatus('Play / Pause');
               holdTriggeredRef.current[fistId] = true;
             }
             if (!isFist) holdTriggeredRef.current[fistId] = false;
@@ -119,6 +117,7 @@ export default function CameraHUD() {
             const heldPinch = mapperRef.current!.checkHold(pinchId, pinch, 300);
             if (heldPinch && !holdTriggeredRef.current[pinchId]) {
               audioEngine.setDeckLoop(deck, true, 2);
+              setGestureStatus('Loop Adjust');
               holdTriggeredRef.current[pinchId] = true;
             }
             if (!pinch) holdTriggeredRef.current[pinchId] = false;
@@ -136,7 +135,10 @@ export default function CameraHUD() {
               lastAngleRef.current[i] = angle;
               const sensitivity = 2.5; // seconds per radian
               const scrubDelta = delta * sensitivity;
-              if (Math.abs(scrubDelta) > 0.0001) audioEngine.jogDeck(deck, scrubDelta);
+              if (Math.abs(scrubDelta) > 0.0001) {
+                audioEngine.jogDeck(deck, scrubDelta);
+                setGestureStatus('Jog Wheel Active');
+              }
             }
           });
 
@@ -147,6 +149,7 @@ export default function CameraHUD() {
               if (!c || !c.assigned) return;
               audioEngine.setDeckVolume(d, c.volume);
               audioEngine.setDeckEQ(d, { low: c.eq.low, mid: c.eq.mid, high: c.eq.high });
+              setGestureStatus(`Deck ${d} EQ / Volume`);
             });
           }
         }
@@ -192,7 +195,9 @@ export default function CameraHUD() {
 
     hands.forEach((landmarks, hi) => {
       // draw connections
-      ctx.strokeStyle = hi === 0 ? 'rgba(99,102,241,0.9)' : 'rgba(236,72,153,0.9)';
+      ctx.strokeStyle = hi === 0 ? 'rgba(180,91,255,0.9)' : 'rgba(79,209,255,0.9)';
+      ctx.shadowColor = hi === 0 ? 'rgba(180,91,255,0.4)' : 'rgba(79,209,255,0.4)';
+      ctx.shadowBlur = 8;
       HAND_CONNECTIONS.forEach(([a, b]) => {
         const pA = landmarks[a];
         const pB = landmarks[b];
@@ -202,10 +207,11 @@ export default function CameraHUD() {
         ctx.lineTo(pB.x * w, pB.y * h);
         ctx.stroke();
       });
+      ctx.shadowBlur = 0;
 
       // draw landmarks
       landmarks.forEach((p, i) => {
-        ctx.fillStyle = 'white';
+        ctx.fillStyle = '#e9eef7';
         ctx.beginPath();
         ctx.arc(p.x * w, p.y * h, 3, 0, Math.PI * 2);
         ctx.fill();
@@ -237,91 +243,80 @@ export default function CameraHUD() {
     }, 100);
   }
 
-  useEffect(() => {
-    // center HUD on mount (client-only)
-    const w = size.width;
-    const h = size.height;
-    const left = Math.max(16, Math.floor((window.innerWidth - w) / 2));
-    const top = Math.max(220, Math.floor((window.innerHeight - h) / 2));
-    setPos({ x: left, y: top });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function onResizePointerDown(e: React.PointerEvent) {
-    resizingRef.current = true;
-    resizeStartRef.current = { mx: e.clientX, my: e.clientY, w: size.width, h: size.height };
-    (e.target as Element).setPointerCapture((e as any).pointerId);
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
-  }
-
-  function onPointerMove(e: PointerEvent) {
-    if (!resizingRef.current) return;
-    const dx = e.clientX - resizeStartRef.current.mx;
-    const dy = e.clientY - resizeStartRef.current.my;
-    const newW = Math.max(240, Math.round(resizeStartRef.current.w + dx));
-    const newH = Math.max(140, Math.round(resizeStartRef.current.h + dy));
-    setSize({ width: newW, height: newH });
-  }
-
-  function onPointerUp(e?: PointerEvent) {
-    resizingRef.current = false;
-    window.removeEventListener('pointermove', onPointerMove);
-    window.removeEventListener('pointerup', onPointerUp);
-  }
-
-  // update todo: position will be updated via drag end
-
   return (
     <motion.div
-      drag
-      onDragEnd={(_, info) => {
-        setPos((p) => ({ x: Math.max(8, Math.round(p.x + info.offset.x)), y: Math.max(8, Math.round(p.y + info.offset.y)) }));
-      }}
-      initial={{ scale: 0.98, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 0.25 }}
-      className="bg-black/30 rounded overflow-hidden border border-white/5 neon-shadow"
-      style={{ width: size.width, height: size.height, position: 'fixed', left: pos.x, top: pos.y, zIndex: 900 }}
+      initial={{ y: 12, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.35, type: 'spring', stiffness: 140, damping: 18 }}
+      className="relative w-full max-w-2xl h-[320px] sm:h-[360px] md:h-[380px] rounded-2xl overflow-hidden border border-white/8 glass-strong neon-shadow"
     >
-      <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
+
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black/55 backdrop-blur-md px-3 py-2 rounded-lg flex items-center gap-2 text-xs text-white border border-white/10 shadow-lg">
+        <span className="text-base">✋</span>
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.18em] text-gray-300">Gesture Status</div>
+          <div className="text-sm font-medium">{gestureStatus}</div>
+        </div>
+      </div>
+
       <div className="p-2 absolute bottom-2 left-2 flex gap-2">
         {!running ? (
-          <button onClick={startCamera} className="px-2 py-1 bg-white/6 rounded text-sm">
+          <motion.button
+            whileTap={{ scale: 0.94 }}
+            onClick={startCamera}
+            className="px-3 py-2 bg-gradient-to-r from-purple-500 via-pink-500 to-fuchsia-500 rounded-lg text-sm text-white shadow-lg"
+          >
             Start Camera
-          </button>
+          </motion.button>
         ) : (
           <>
-            <button onClick={stopCamera} className="px-2 py-1 bg-red-600/80 rounded text-sm text-white">
-              Stop Camera
-            </button>
-            <button onClick={startCalibrationFlow} className="px-2 py-1 bg-gradient-to-r from-green-500 to-teal-400 rounded text-sm text-white">
+            <motion.button
+              whileTap={{ scale: 0.94 }}
+              onClick={stopCamera}
+              className="px-3 py-2 bg-red-600/80 rounded-lg text-sm text-white shadow-lg"
+            >
+              Stop
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.94 }}
+              onClick={startCalibrationFlow}
+              className="px-3 py-2 bg-gradient-to-r from-green-500 to-teal-400 rounded-lg text-sm text-white shadow-lg"
+            >
               Calibrate
-            </button>
+            </motion.button>
           </>
         )}
       </div>
       {/* Calibration progress and mapped controls overlay */}
       {calProgress > 0 && (
-        <div className="absolute top-2 left-2 bg-white/6 px-2 py-1 rounded text-xs">
-          Calibrating: {(calProgress * 100).toFixed(0)}%
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute top-16 left-2 bg-black/60 backdrop-blur-md px-3 py-2 rounded-lg text-xs text-white border border-white/10 shadow-lg"
+        >
+          <div className="font-medium mb-1">Calibrating: {(calProgress * 100).toFixed(0)}%</div>
+          <div className="w-40 h-1 bg-white/10 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${calProgress * 100}%` }}
+              className="h-full bg-gradient-to-r from-green-500 to-teal-400"
+            />
+          </div>
+        </motion.div>
       )}
       {mappedControls && (
-        <div className="absolute top-2 right-2 bg-black/60 text-white text-xs p-2 rounded w-44">
-          <div className="font-medium">Mapped</div>
-          <div className="mt-1">A: {mappedControls.A?.assigned ? `vol ${mappedControls.A.volume.toFixed(2)}` : '—'}</div>
-          <div>B: {mappedControls.B?.assigned ? `vol ${mappedControls.B.volume.toFixed(2)}` : '—'}</div>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="absolute top-3 right-3 bg-black/55 backdrop-blur-md text-white text-[11px] p-3 rounded-lg border border-white/10 shadow-lg space-y-1"
+        >
+          <div className="font-semibold text-xs">Active Controls</div>
+          <div className="text-gray-300">Deck A: {mappedControls.A?.assigned ? `${(mappedControls.A.volume * 100).toFixed(0)}%` : '—'}</div>
+          <div className="text-gray-300">Deck B: {mappedControls.B?.assigned ? `${(mappedControls.B.volume * 100).toFixed(0)}%` : '—'}</div>
+        </motion.div>
       )}
-      {/* Resize handle */}
-      <div
-        onPointerDown={onResizePointerDown}
-        className="absolute bottom-1 right-1 w-4 h-4 bg-white/20 rounded cursor-nwse-resize"
-        style={{ touchAction: 'none' }}
-        aria-hidden
-      />
     </motion.div>
   );
 }

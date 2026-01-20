@@ -59,12 +59,12 @@ export default function Crossfader({ value = 0.5, onChange }: { value?: number; 
       ref={containerRef}
       tabIndex={0}
       aria-label="Crossfader control. Use left/right arrows to adjust."
-      className="p-4 rounded-xl glass border border-white/5 w-full focus:outline-none"
+      className="p-4 rounded-2xl card-surface neon-outline w-full focus:outline-none"
       initial={{ y: 6, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.35 }}
+      transition={{ duration: 0.35, type: 'spring', stiffness: 140, damping: 16 }}
     >
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-3">
         <div className="text-sm text-gray-300">Crossfader</div>
         <div className="flex items-center gap-2">
           <div className="text-xs text-gray-400">Master</div>
@@ -74,20 +74,24 @@ export default function Crossfader({ value = 0.5, onChange }: { value?: number; 
         </div>
       </div>
 
-      <motion.input
-        role="slider"
-        aria-valuemin={0}
-        aria-valuemax={1}
-        aria-valuenow={Number(value)}
-        type="range"
-        min={0}
-        max={1}
-        step={0.01}
-        value={value}
-        onChange={(e) => onChange?.(parseFloat(e.target.value))}
-        className="w-full"
-        whileTap={{ scale: 0.995 }}
-      />
+      <div className="relative">
+        <motion.input
+          role="slider"
+          aria-valuemin={0}
+          aria-valuemax={1}
+          aria-valuenow={Number(value)}
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={value}
+          onChange={(e) => onChange?.(parseFloat(e.target.value))}
+          className="w-full h-2 appearance-none bg-white/10 rounded-full"
+          style={{ accentColor: '#b45bff' }}
+          whileTap={{ scale: 0.995 }}
+        />
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-purple-500/10 via-transparent to-cyan-400/10 rounded-full" />
+      </div>
 
       <div className="mt-2 text-xs text-gray-400">Keyboard: ← / → to nudge, Home/End to jump</div>
     </motion.div>
