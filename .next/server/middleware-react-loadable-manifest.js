@@ -1,0 +1,1 @@
+self.__REACT_LOADABLE_MANIFEST='{"lib/vision/HandTracker.ts -> @mediapipe/hands":{"id":1370,"files":["static/chunks/370.2b90667bf0c2ea9d.js"]}}';
