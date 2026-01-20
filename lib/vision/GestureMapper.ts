@@ -159,6 +159,25 @@ export default class GestureMapper {
     return centroidX < 0.5 ? 'A' : 'B';
   }
 
+  // Auto-calibrate if no saved calibration exists (uses reasonable defaults)
+  ensureCalibration() {
+    if (this.getSaved()) return;
+    // fallback calibration: assume fingers span from ~0.3 (top) to ~0.8 (bottom)
+    const fallback: Calibration = {
+      sampleCount: 1,
+      ranges: {
+        thumb: { min: 0.3, max: 0.8 },
+        index: { min: 0.3, max: 0.8 },
+        middle: { min: 0.3, max: 0.8 },
+        ring: { min: 0.3, max: 0.8 },
+      },
+      timestamp: Date.now(),
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(fallback));
+    } catch (e) {}
+  }
+
   // Map detected hands to deck controls. Returns controls for decks A and B.
   mapHandsToControls(hands: Array<Array<{ x: number; y: number; z?: number }>>, handedness?: any) {
     const controls: Record<'A' | 'B', { assigned: boolean; volume: number; eq: { low: number; mid: number; high: number }; scrubDelta: number }> = {

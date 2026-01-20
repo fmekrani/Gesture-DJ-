@@ -41,6 +41,7 @@ export default function CameraHUD() {
   const [calProgress, setCalProgress] = useState(0);
   const [mappedControls, setMappedControls] = useState<any | null>(null);
   const [gestureStatus, setGestureStatus] = useState<string>('Ready');
+  const gestureTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
@@ -60,6 +61,7 @@ export default function CameraHUD() {
       trackerRef.current = tracker;
 
       mapperRef.current = new GestureMapper();
+      mapperRef.current.ensureCalibration(); // auto-calibrate if needed
       tracker.start(
         videoRef.current as HTMLVideoElement,
         (hands, handedness) => {
@@ -93,17 +95,21 @@ export default function CameraHUD() {
             const wrist = landmarks[0];
             const tips = [4, 8, 12, 16, 20].map((idx) => landmarks[idx]).filter(Boolean as any) as any[];
             const spread = tips.reduce((s, p) => s + Math.hypot(p.x - wrist.x, p.y - wrist.y), 0) / tips.length;
-            const isFist = spread < 0.08;
+            const isFist = spread < 0.15; // increased threshold (was 0.08 — now more forgiving)
             const fistId = `fist_${i}_${deck}`;
             const heldFist = mapperRef.current!.checkHold(fistId, isFist, 300);
             if (heldFist && !holdTriggeredRef.current[fistId]) {
               const info = audioEngine.getDeckInfo(deck);
               if (info.isPlaying) audioEngine.pauseDeck(deck);
               else audioEngine.playDeck(deck);
-              setGestureStatus('Play / Pause');
+              setGestureStatus(`✋ Play / Pause — Deck ${deck}`);
+              if (gestureTimeoutRef.current) clearTimeout(gestureTimeoutRef.current);
+              gestureTimeoutRef.current = window.setTimeout(() => setGestureStatus('Ready'), 1500);
               holdTriggeredRef.current[fistId] = true;
             }
-            if (!isFist) holdTriggeredRef.current[fistId] = false;
+            if (!isFist) {
+              holdTriggeredRef.current[fistId] = false;
+            }
 
             // pinch (thumb-index) -> loop short region
             const thumb = landmarks[4];
@@ -111,16 +117,20 @@ export default function CameraHUD() {
             let pinch = false;
             if (thumb && index) {
               const d = Math.hypot(thumb.x - index.x, thumb.y - index.y);
-              pinch = d < 0.04;
+              pinch = d < 0.065; // increased threshold (was 0.04 — now more forgiving)
             }
             const pinchId = `pinch_${i}_${deck}`;
             const heldPinch = mapperRef.current!.checkHold(pinchId, pinch, 300);
             if (heldPinch && !holdTriggeredRef.current[pinchId]) {
               audioEngine.setDeckLoop(deck, true, 2);
-              setGestureStatus('Loop Adjust');
+              setGestureStatus(`✌ Loop Toggle — Deck ${deck}`);
+              if (gestureTimeoutRef.current) clearTimeout(gestureTimeoutRef.current);
+              gestureTimeoutRef.current = window.setTimeout(() => setGestureStatus('Ready'), 1500);
               holdTriggeredRef.current[pinchId] = true;
             }
-            if (!pinch) holdTriggeredRef.current[pinchId] = false;
+            if (!pinch) {
+              holdTriggeredRef.current[pinchId] = false;
+            }
 
             // palm rotation -> jog
             const midMcp = landmarks[9];
@@ -137,7 +147,9 @@ export default function CameraHUD() {
               const scrubDelta = delta * sensitivity;
               if (Math.abs(scrubDelta) > 0.0001) {
                 audioEngine.jogDeck(deck, scrubDelta);
-                setGestureStatus('Jog Wheel Active');
+                setGestureStatus(`🎚 Jog — Deck ${deck}`);
+                if (gestureTimeoutRef.current) clearTimeout(gestureTimeoutRef.current);
+                gestureTimeoutRef.current = window.setTimeout(() => setGestureStatus('Ready'), 800);
               }
             }
           });
