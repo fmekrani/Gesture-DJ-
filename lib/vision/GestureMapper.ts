@@ -13,6 +13,7 @@ export type FingerRanges = {
   index: { min: number; max: number } | null;
   middle: { min: number; max: number } | null;
   ring: { min: number; max: number } | null;
+  pinky: { min: number; max: number } | null;
 };
 
 export type Calibration = {
@@ -40,15 +41,15 @@ export default class GestureMapper {
 
   startCalibration() {
     // reset running capture state
-    const ranges: FingerRanges = { thumb: null, index: null, middle: null, ring: null };
+    const ranges: FingerRanges = { thumb: null, index: null, middle: null, ring: null, pinky: null };
     this.calibration = { sampleCount: 0, ranges, timestamp: Date.now() };
   }
 
   absorbSample(landmarks: Array<{ x: number; y: number; z?: number }>) {
     if (!this.calibration) return;
-    // landmarks expected in MediaPipe order; use finger tips: thumb=4,index=8,middle=12,ring=16
-    const mapping = { thumb: 4, index: 8, middle: 12, ring: 16 } as Record<string, number>;
-    const keys: Array<keyof FingerRanges> = ['thumb', 'index', 'middle', 'ring'];
+    // landmarks expected in MediaPipe order; use finger tips: thumb=4,index=8,middle=12,ring=16,pinky=20
+    const mapping = { thumb: 4, index: 8, middle: 12, ring: 16, pinky: 20 } as Record<string, number>;
+    const keys: Array<keyof FingerRanges> = ['thumb', 'index', 'middle', 'ring', 'pinky'];
 
     keys.forEach((k) => {
       const idx = mapping[k];
@@ -104,7 +105,7 @@ export default class GestureMapper {
   }
 
   // map a finger Y value using calibration to a 0..1 control (0=top,1=bottom) with smoothing
-  mapFingerY(finger: 'thumb' | 'index' | 'middle' | 'ring', y: number) {
+  mapFingerY(finger: 'thumb' | 'index' | 'middle' | 'ring' | 'pinky', y: number) {
     const saved = this.getSaved();
     const key = `${finger}`;
     let mapped = 0.5;
@@ -170,6 +171,7 @@ export default class GestureMapper {
         index: { min: 0.3, max: 0.8 },
         middle: { min: 0.3, max: 0.8 },
         ring: { min: 0.3, max: 0.8 },
+        pinky: { min: 0.3, max: 0.8 },
       },
       timestamp: Date.now(),
     };
@@ -192,16 +194,16 @@ export default class GestureMapper {
       const deck = this.decideDeckForHand(i, centroidX);
 
       // finger tip indices
-      const idx = landmarks[8];
-      const mid = landmarks[12];
-      const ring = landmarks[16];
-      const thumb = landmarks[4];
+      const idx = landmarks[8];       // index → volume
+      const mid = landmarks[12];      // middle → low EQ
+      const ring = landmarks[16];     // ring → mid EQ
+      const pinky = landmarks[20];    // pinky → high EQ
 
       const volume = idx ? this.mapFingerY('index', idx.y) : 0.5;
       // map other fingers to EQ gains (-12..+12 dB)
-      const high = thumb ? (this.mapFingerY('thumb', thumb.y) * 2 - 1) * 12 : 0;
       const low = mid ? (this.mapFingerY('middle', mid.y) * 2 - 1) * 12 : 0;
       const midG = ring ? (this.mapFingerY('ring', ring.y) * 2 - 1) * 12 : 0;
+      const high = pinky ? (this.mapFingerY('pinky', pinky.y) * 2 - 1) * 12 : 0;
 
       controls[deck].assigned = true;
       controls[deck].volume = volume;

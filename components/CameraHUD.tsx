@@ -92,18 +92,33 @@ export default function CameraHUD() {
             const centroidX = landmarks.reduce((s, p) => s + p.x, 0) / landmarks.length;
             const deck: 'A' | 'B' = centroidX < 0.5 ? 'A' : 'B';
 
-            // play/pause via fist (low spread)
+            // play/pause via palm open/close: open palm → play, closed palm → pause
             const wrist = landmarks[0];
             const tips = [4, 8, 12, 16, 20].map((idx) => landmarks[idx]).filter(Boolean as any) as any[];
             const spread = tips.reduce((s, p) => s + Math.hypot(p.x - wrist.x, p.y - wrist.y), 0) / tips.length;
-            const isFist = spread < 0.15; // increased threshold (was 0.08 — now more forgiving)
+            
+            // Detect open palm (fingers spread)
+            const isOpenPalm = spread > 0.25; // open hand threshold
+            const openPalmId = `openPalm_${i}_${deck}`;
+            const heldOpenPalm = mapperRef.current!.checkHold(openPalmId, isOpenPalm, 300);
+            if (heldOpenPalm && !holdTriggeredRef.current[openPalmId]) {
+              audioEngine.playDeck(deck);
+              setGestureStatus(`▶️ Play — Deck ${deck}`);
+              if (gestureTimeoutRef.current) clearTimeout(gestureTimeoutRef.current);
+              gestureTimeoutRef.current = window.setTimeout(() => setGestureStatus('Ready'), 1500);
+              holdTriggeredRef.current[openPalmId] = true;
+            }
+            if (!isOpenPalm) {
+              holdTriggeredRef.current[openPalmId] = false;
+            }
+
+            // Detect closed palm/fist (fingers closed)
+            const isFist = spread < 0.15; // closed hand threshold
             const fistId = `fist_${i}_${deck}`;
             const heldFist = mapperRef.current!.checkHold(fistId, isFist, 300);
             if (heldFist && !holdTriggeredRef.current[fistId]) {
-              const info = audioEngine.getDeckInfo(deck);
-              if (info.isPlaying) audioEngine.pauseDeck(deck);
-              else audioEngine.playDeck(deck);
-              setGestureStatus(`✋ Play / Pause — Deck ${deck}`);
+              audioEngine.pauseDeck(deck);
+              setGestureStatus(`⏸️ Pause — Deck ${deck}`);
               if (gestureTimeoutRef.current) clearTimeout(gestureTimeoutRef.current);
               gestureTimeoutRef.current = window.setTimeout(() => setGestureStatus('Ready'), 1500);
               holdTriggeredRef.current[fistId] = true;
@@ -112,7 +127,7 @@ export default function CameraHUD() {
               holdTriggeredRef.current[fistId] = false;
             }
 
-            // pinch (thumb-index) -> loop short region
+            // pinch (thumb-index) -> toggle loop
             const thumb = landmarks[4];
             const index = landmarks[8];
             let pinch = false;
@@ -123,8 +138,13 @@ export default function CameraHUD() {
             const pinchId = `pinch_${i}_${deck}`;
             const heldPinch = mapperRef.current!.checkHold(pinchId, pinch, 300);
             if (heldPinch && !holdTriggeredRef.current[pinchId]) {
-              audioEngine.setDeckLoop(deck, true, 2);
-              setGestureStatus(`✌ Loop Toggle — Deck ${deck}`);
+              // Toggle loop state (track in holdTriggeredRef)
+              const loopStateKey = `loopState_${deck}`;
+              const currentLoopState = holdTriggeredRef.current[loopStateKey] || false;
+              const newLoopState = !currentLoopState;
+              audioEngine.setDeckLoop(deck, newLoopState, 2);
+              holdTriggeredRef.current[loopStateKey] = newLoopState;
+              setGestureStatus(`✌ Loop ${newLoopState ? 'ON' : 'OFF'} — Deck ${deck}`);
               if (gestureTimeoutRef.current) clearTimeout(gestureTimeoutRef.current);
               gestureTimeoutRef.current = window.setTimeout(() => setGestureStatus('Ready'), 1500);
               holdTriggeredRef.current[pinchId] = true;
