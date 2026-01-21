@@ -64,7 +64,7 @@ export default function Deck({ id, className = '' }: DeckProps) {
 
   useEffect(() => {
     audioEngine.setDeckLoop(id as 'A' | 'B', loopOn, loopLengths[loopIndex]);
-  }, [loopOn, loopIndex, id]);
+  }, [loopOn, loopIndex, id, loopLengths]);
 
   function onLoadClick() {
     inputRef.current?.click();
