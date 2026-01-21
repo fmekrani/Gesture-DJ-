@@ -1,8 +1,9 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Deck from '../components/Deck';
+import type { DeckHandle } from '../components/Deck';
 import Crossfader from '../components/Crossfader';
 import CameraHUD from '../components/CameraHUD';
 import Settings from '../components/Settings';
@@ -11,6 +12,8 @@ import audioEngine from '../lib/audio/engineInstance';
 export default function Page() {
   const [started, setStarted] = useState(false);
   const [cf, setCf] = useState(0.5);
+  const deckARef = useRef<DeckHandle>(null);
+  const deckBRef = useRef<DeckHandle>(null);
 
   function handleStart() {
     setStarted(true);
@@ -21,6 +24,11 @@ export default function Page() {
     setCf(v);
     audioEngine.setCrossfade(v);
   }
+
+  // Pass deck refs to CameraHUD via context or callback
+  useEffect(() => {
+    (window as any).__deckRefs = { A: deckARef, B: deckBRef };
+  }, []);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -78,11 +86,11 @@ export default function Page() {
       </header>
 
       <section className="grid gap-5 md:grid-cols-[1fr,minmax(320px,420px),1fr] items-start">
-        <div className="col-span-1"><Deck id="A" /></div>
+        <div className="col-span-1"><Deck ref={deckARef} id="A" /></div>
         <div className="col-span-1 flex flex-col items-center gap-4">
           <Crossfader value={cf} onChange={onCrossfade} />
         </div>
-        <div className="col-span-1"><Deck id="B" /></div>
+        <div className="col-span-1"><Deck ref={deckBRef} id="B" /></div>
       </section>
 
       <div className="mt-8 flex justify-center">

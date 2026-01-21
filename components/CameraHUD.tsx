@@ -60,8 +60,9 @@ export default function CameraHUD() {
       const tracker = new HandTracker();
       trackerRef.current = tracker;
 
-      mapperRef.current = new GestureMapper();
-      mapperRef.current.ensureCalibration(); // auto-calibrate if needed
+      const mapper = new GestureMapper();
+      mapperRef.current = mapper;
+      mapper.ensureCalibration(); // auto-calibrate if needed
       tracker.start(
         videoRef.current as HTMLVideoElement,
         (hands, handedness) => {
@@ -245,7 +246,10 @@ export default function CameraHUD() {
 
   // expose simple calibration controls on the camera HUD for testing
   async function startCalibrationFlow() {
-    if (!mapperRef.current) mapperRef.current = new GestureMapper();
+    if (!mapperRef.current) {
+      const mapper = new GestureMapper();
+      mapperRef.current = mapper;
+    }
     mapperRef.current.startCalibration();
     // show a quick 3s capture
     const start = Date.now();

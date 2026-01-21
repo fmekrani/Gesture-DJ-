@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { motion } from 'framer-motion';
 import Waveform from './Waveform';
 import Knob from './Knob';
@@ -12,7 +12,11 @@ type DeckProps = {
   className?: string;
 };
 
-export default function Deck({ id, className = '' }: DeckProps) {
+export type DeckHandle = {
+  updateEQFromGesture: (band: 'low' | 'mid' | 'high', gainDb: number) => void;
+};
+
+const Deck = forwardRef<DeckHandle, DeckProps>(({ id, className = '' }, ref) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [peaks, setPeaks] = useState<Float32Array | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
@@ -32,6 +36,17 @@ export default function Deck({ id, className = '' }: DeckProps) {
   const loopLengths = [1, 2, 4, 8];
   const [loopOn, setLoopOn] = useState(false);
   const [loopIndex, setLoopIndex] = useState(2); // default 4s
+
+  // Expose updateEQFromGesture via ref
+  useImperativeHandle(ref, () => ({
+    updateEQFromGesture(band: 'low' | 'mid' | 'high', gainDb: number) {
+      const normalizedValue = (gainDb / 24) + 0.5;
+      const clamped = Math.max(0, Math.min(1, normalizedValue));
+      if (band === 'low') setLow(clamped);
+      else if (band === 'mid') setMid(clamped);
+      else if (band === 'high') setHigh(clamped);
+    }
+  }), []);
 
   useEffect(() => {
     let raf = 0;
@@ -227,4 +242,7 @@ export default function Deck({ id, className = '' }: DeckProps) {
       </div>
     </motion.div>
   );
-}
+});
+
+Deck.displayName = 'Deck';
+export default Deck;
