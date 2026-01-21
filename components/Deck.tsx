@@ -30,9 +30,12 @@ const Deck = forwardRef<DeckHandle, DeckProps>(({ id, className = '' }, ref) => 
   const [mid, setMid] = useState(0.5);
   const [high, setHigh] = useState(0.5);
 
-  // FX state
+  // FX & Loop state
   const [fxOn, setFxOn] = useState(false);
   const [fxWet, setFxWet] = useState(0.2);
+  const loopLengths = [1, 2, 4, 8];
+  const [loopOn, setLoopOn] = useState(false);
+  const [loopIndex, setLoopIndex] = useState(2); // default 4s
 
   // Expose updateEQFromGesture via ref
   useImperativeHandle(ref, () => ({
@@ -74,6 +77,10 @@ const Deck = forwardRef<DeckHandle, DeckProps>(({ id, className = '' }, ref) => 
     audioEngine.setDeckFX(id as 'A' | 'B', { wet: fxOn ? fxWet : 0 });
   }, [fxOn, fxWet, id]);
 
+  useEffect(() => {
+    audioEngine.setDeckLoop(id as 'A' | 'B', loopOn, loopLengths[loopIndex]);
+  }, [loopOn, loopIndex, id, loopLengths]);
+
   function onLoadClick() {
     inputRef.current?.click();
   }
@@ -104,6 +111,14 @@ const Deck = forwardRef<DeckHandle, DeckProps>(({ id, className = '' }, ref) => 
 
   function handleSeek(t: number) {
     audioEngine.seekDeck(id as 'A' | 'B', t);
+  }
+
+  function toggleLoopHold() {
+    setLoopOn((s) => !s);
+  }
+
+  function cycleLoopLength() {
+    setLoopIndex((i) => (i + 1) % loopLengths.length);
   }
 
   function formatTime(s: number | undefined) {
@@ -143,7 +158,7 @@ const Deck = forwardRef<DeckHandle, DeckProps>(({ id, className = '' }, ref) => 
           duration={duration}
           currentTime={currentTime}
           onSeek={handleSeek}
-          loop={null}
+          loop={loopOn && duration ? { start: 0, end: loopLengths[loopIndex] } : null}
           height={140}
           playing={isPlaying}
         />
@@ -158,6 +173,13 @@ const Deck = forwardRef<DeckHandle, DeckProps>(({ id, className = '' }, ref) => 
           >
             {isPlaying ? 'Pause' : 'Play'}
           </motion.button>
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <span>Loop</span>
+            <button onClick={toggleLoopHold} className={`px-2 py-1 rounded-md border ${loopOn ? accentBorder + ' text-white bg-white/10' : 'border-white/10 text-gray-300'}`}>
+              {loopOn ? `${loopLengths[loopIndex]}s` : 'Off'}
+            </button>
+            <button onClick={cycleLoopLength} className="px-2 py-1 rounded-md border border-white/10 text-gray-300">Cycle</button>
+          </div>
         </div>
 
         <div className="flex flex-col gap-3">
