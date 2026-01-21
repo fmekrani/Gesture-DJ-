@@ -96,6 +96,15 @@ const Deck = forwardRef<DeckHandle, DeckProps>(({ id, className = '' }, ref) => 
   }
 
   function handlePlayPause() {
+    // Ensure audio context is created first
+    audioEngine.getOrCreateContext();
+    
+    // Check if track is loaded
+    if (!peaks && !duration) {
+      console.warn('No track loaded on deck', id);
+      return;
+    }
+    
     if (isPlaying) audioEngine.pauseDeck(id as 'A' | 'B');
     else audioEngine.playDeck(id as 'A' | 'B');
   }
