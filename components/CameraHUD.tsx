@@ -127,32 +127,6 @@ export default function CameraHUD() {
               holdTriggeredRef.current[fistId] = false;
             }
 
-            // pinch (thumb-index) -> toggle loop
-            const thumb = landmarks[4];
-            const index = landmarks[8];
-            let pinch = false;
-            if (thumb && index) {
-              const d = Math.hypot(thumb.x - index.x, thumb.y - index.y);
-              pinch = d < 0.065; // increased threshold (was 0.04 — now more forgiving)
-            }
-            const pinchId = `pinch_${i}_${deck}`;
-            const heldPinch = mapperRef.current!.checkHold(pinchId, pinch, 300);
-            if (heldPinch && !holdTriggeredRef.current[pinchId]) {
-              // Toggle loop state (track in holdTriggeredRef)
-              const loopStateKey = `loopState_${deck}`;
-              const currentLoopState = holdTriggeredRef.current[loopStateKey] || false;
-              const newLoopState = !currentLoopState;
-              audioEngine.setDeckLoop(deck, newLoopState, 2);
-              holdTriggeredRef.current[loopStateKey] = newLoopState;
-              setGestureStatus(`✌ Loop ${newLoopState ? 'ON' : 'OFF'} — Deck ${deck}`);
-              if (gestureTimeoutRef.current) clearTimeout(gestureTimeoutRef.current);
-              gestureTimeoutRef.current = window.setTimeout(() => setGestureStatus('Ready'), 1500);
-              holdTriggeredRef.current[pinchId] = true;
-            }
-            if (!pinch) {
-              holdTriggeredRef.current[pinchId] = false;
-            }
-
             // palm rotation -> jog
             const midMcp = landmarks[9];
             if (wrist && midMcp) {
